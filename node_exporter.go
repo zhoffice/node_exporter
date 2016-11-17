@@ -27,7 +27,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
 	"github.com/prometheus/common/version"
-	"github.com/prometheus/node_exporter/collector"
+	"github.com/percona/node_exporter/collector"
 )
 
 const (
@@ -45,6 +45,22 @@ var (
 		[]string{"collector", "result"},
 	)
 )
+
+type basicAuthHandler struct {
+	handler  http.HandlerFunc
+	user     string
+	password string
+}
+
+func (h *basicAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	user, password, ok := r.BasicAuth()
+	if !ok || password != h.password || user != h.user {
+		w.Header().Set("WWW-Authenticate", "Basic realm=\"metrics\"")
+		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
+		return
+	}
+	h.handler(w, r)
+}
 
 // NodeCollector implements the prometheus.Collector interface.
 type NodeCollector struct {
@@ -157,11 +173,25 @@ func main() {
 		log.Infof(" - %s", n)
 	}
 
+	var authUser, authPass string
+	httpAuth := os.Getenv("HTTP_AUTH")
+	if httpAuth != "" {
+		data := strings.SplitN(httpAuth, ":", 2)
+		if len(data) != 2 || data[0] == "" || data[1] == "" {
+			log.Fatal("HTTP_AUTH should be formatted as user:password")
+		}
+		authUser = data[0]
+		authPass = data[1]
+		log.Infoln("HTTP basic authentication is enabled")
+	}
+
 	nodeCollector := NodeCollector{collectors: collectors}
 	prometheus.MustRegister(nodeCollector)
 
 	handler := prometheus.Handler()
-
+	if authUser != "" && authPass != "" {
+		handler = &basicAuthHandler{handler: handler.ServeHTTP, user: authUser, password: authPass}
+	}
 	http.Handle(*metricsPath, handler)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
