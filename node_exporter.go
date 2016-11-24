@@ -16,6 +16,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -24,10 +25,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/percona/node_exporter/collector"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
 	"github.com/prometheus/common/version"
-	"github.com/percona/node_exporter/collector"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -45,6 +47,11 @@ var (
 		[]string{"collector", "result"},
 	)
 )
+
+type webAuth struct {
+	User     string `yaml:"server_user,omitempty"`
+	Password string `yaml:"server_password,omitempty"`
+}
 
 type basicAuthHandler struct {
 	handler  http.HandlerFunc
@@ -138,6 +145,7 @@ func main() {
 		showVersion       = flag.Bool("version", false, "Print version information.")
 		listenAddress     = flag.String("web.listen-address", ":9100", "Address on which to expose metrics and web interface.")
 		metricsPath       = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
+		webAuthFile       = flag.String("web.auth-file", "", "Path to YAML file with server_user, server_password options for http basic auth (overrides HTTP_AUTH env var).")
 		enabledCollectors = flag.String("collectors.enabled", filterAvailableCollectors(defaultCollectors), "Comma-separated list of collectors to use.")
 		printCollectors   = flag.Bool("collectors.print", false, "If true, print available collectors and exit.")
 	)
@@ -157,7 +165,7 @@ func main() {
 			collectorNames = append(collectorNames, n)
 		}
 		collectorNames.Sort()
-		fmt.Printf("Available collectors:\n")
+		fmt.Println("Available collectors:")
 		for _, n := range collectorNames {
 			fmt.Printf(" - %s\n", n)
 		}
@@ -173,24 +181,32 @@ func main() {
 		log.Infof(" - %s", n)
 	}
 
-	var authUser, authPass string
+	cfg := &webAuth{}
 	httpAuth := os.Getenv("HTTP_AUTH")
-	if httpAuth != "" {
+	if *webAuthFile != "" {
+		bytes, err := ioutil.ReadFile(*webAuthFile)
+		if err != nil {
+			log.Fatal("Cannot read auth file:", err)
+		}
+		if err := yaml.Unmarshal(bytes, cfg); err != nil {
+			log.Fatal("Cannot parse auth file:", err)
+		}
+	} else if httpAuth != "" {
 		data := strings.SplitN(httpAuth, ":", 2)
 		if len(data) != 2 || data[0] == "" || data[1] == "" {
 			log.Fatal("HTTP_AUTH should be formatted as user:password")
 		}
-		authUser = data[0]
-		authPass = data[1]
-		log.Infoln("HTTP basic authentication is enabled")
+		cfg.User = data[0]
+		cfg.Password = data[1]
 	}
 
 	nodeCollector := NodeCollector{collectors: collectors}
 	prometheus.MustRegister(nodeCollector)
 
 	handler := prometheus.Handler()
-	if authUser != "" && authPass != "" {
-		handler = &basicAuthHandler{handler: handler.ServeHTTP, user: authUser, password: authPass}
+	if cfg.User != "" && cfg.Password != "" {
+		handler = &basicAuthHandler{handler: handler.ServeHTTP, user: cfg.User, password: cfg.Password}
+		log.Infoln("HTTP basic authentication is enabled")
 	}
 	http.Handle(*metricsPath, handler)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
