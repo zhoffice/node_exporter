@@ -109,6 +109,12 @@
 			"path": "golang.org/x/sys/unix",
 			"revision": "833a04a10549a95dc34458c195cbad61bbb6cb4d",
 			"revisionTime": "2015-12-10T17:34:15-08:00"
+		},
+		{
+			"checksumSHA1": "Ww6wiSKdA8LwxoJz4DNUF+crH4g=",
+			"path": "gopkg.in/yaml.v2",
+			"revision": "f7716cbe52baa25d2e9b0d0da546fcf909fc16b4",
+			"revisionTime": "2015-12-01T16:27:45Z"
 		}
 	],
 	"rootPath": "github.com/percona/node_exporter"
