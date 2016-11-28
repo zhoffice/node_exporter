@@ -19,7 +19,7 @@ Which collectors are used is controlled by the `--collectors.enabled` flag.
 Name     | Description | OS
 ---------|-------------|----
 conntrack | Shows conntrack statistics (does nothing if no `/proc/sys/net/netfilter/` present). | Linux
-cpu | Exposes CPU statistics | FreeBSD
+cpu | Exposes CPU statistics | Dragonfly, FreeBSD
 diskstats | Exposes disk I/O statistics from `/proc/diskstats`. | Linux
 entropy | Exposes available entropy. | Linux
 filefd | Exposes file descriptor statistics from `/proc/sys/fs/file-nr`. | Linux
@@ -41,7 +41,7 @@ vmstat | Exposes statistics from `/proc/vmstat`. | Linux
 Name     | Description | OS
 ---------|-------------|----
 bonding | Exposes the number of configured and active slaves of Linux bonding interfaces. | Linux
-devstat | Exposes device statistics | FreeBSD
+devstat | Exposes device statistics | Dragonfly, FreeBSD
 gmond | Exposes statistics from Ganglia. | _any_
 interrupts | Exposes detailed interrupts statistics. | Linux, OpenBSD
 ipvs | Exposes IPVS status from `/proc/net/ip_vs` and stats from `/proc/net/ip_vs_stats`. | Linux
