@@ -51,6 +51,18 @@
 			"revisionTime": "2015-10-11T12:25:29+02:00"
 		},
 		{
+			"checksumSHA1": "BVdy4fO/ylt5bwpE2aOjtx71u8Q=",
+			"path": "github.com/percona/gopsutil/internal/common",
+			"revision": "e91ceec1d23c712f597c2de5983b718a1f01575c",
+			"revisionTime": "2016-10-10T20:45:14Z"
+		},
+		{
+			"checksumSHA1": "gHiUDtpv0qklCdMLOPEniWHmhe0=",
+			"path": "github.com/percona/gopsutil/process",
+			"revision": "e91ceec1d23c712f597c2de5983b718a1f01575c",
+			"revisionTime": "2016-10-10T20:45:14Z"
+		},
+		{
 			"checksumSHA1": "s1sQ9epPRLoKRzeagHffd//B1Ew=",
 			"path": "github.com/prometheus/client_golang/prometheus",
 			"revision": "67994f177195311c3ea3d4407ed0175e34a4256f",
