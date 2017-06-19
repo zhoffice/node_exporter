@@ -116,7 +116,7 @@ There is a Grafana dashboard for Host available as a part of [PMM](https://www.p
 ## Submit Bug Report
 If you find a bug in Percona Node Exporter or one of the related projects, you should submit a report to that project's [JIRA](https://jira.percona.com) issue tracker.
 
-Your first step should be to search the existing set of open tickets for a similar report. If you find that someone else has already reported your problem, then you can upvote that report to increase its visibility.
+Your first step should be  [to search](https://jira.percona.com/issues/?jql=project=PMM%20AND%20component=Node_Exporter)  the existing set of open tickets for a similar report. If you find that someone else has already reported your problem, then you can upvote that report to increase its visibility.
 
 If there is no existing report, submit a report following these steps:
 
