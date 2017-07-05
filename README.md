@@ -1,14 +1,12 @@
-# Node exporter [![Build Status](https://travis-ci.org/prometheus/node_exporter.svg)][travis]
-
-[![CircleCI](https://circleci.com/gh/prometheus/node_exporter/tree/master.svg?style=shield)][circleci]
-[![Docker Repository on Quay](https://quay.io/repository/prometheus/node-exporter/status)][quay]
-[![Docker Pulls](https://img.shields.io/docker/pulls/prom/node-exporter.svg?maxAge=604800)][hub]
-[![Go Report Card](https://goreportcard.com/badge/github.com/prometheus/node_exporter)][goreportcard]
+# Percona Node Exporter
 
 Prometheus exporter for hardware and OS metrics exposed by \*NIX kernels, written
 in Go with pluggable metric collectors.
 
 The [WMI exporter](https://github.com/martinlindhe/wmi_exporter) is recommended for Windows users.
+
+This fork adds HTTP Basic authentication and TLS support using [Percona's shared code for exporters](https://github.com/percona/exporter_shared).
+
 
 ## Collectors
 
@@ -109,32 +107,27 @@ mv /path/to/directory/role.prom.$$ /path/to/directory/role.prom
 
     make test
 
+## Visualize
 
-## Using Docker
-The node\_exporter is designed to monitor the host system. It's not recommended
-to deploy it as Docker container because it requires access to the host system.
-If you need to run it on Docker, you can deploy this exporter using the
-[node-exporter Docker
-image](https://quay.io/repository/prometheus/node-exporter) with the following
-options and bind-mounts:
+There is a Grafana dashboard for Host available as a part of [PMM](https://www.percona.com/doc/percona-monitoring-and-management/index.html) project, you can see the demo [here](https://pmmdemo.percona.com/graph/dashboard/db/system-overview).
 
-```bash
-docker run -d -p 9100:9100 \
-  -v "/proc:/host/proc" \
-  -v "/sys:/host/sys" \
-  -v "/:/rootfs" \
-  --net="host" \
-  quay.io/prometheus/node-exporter \
-    -collector.procfs /host/proc \
-    -collector.sysfs /host/sys \
-    -collector.filesystem.ignored-mount-points "^/(sys|proc|dev|host|etc)($|/)"
-```
+## Submit Bug Report
 
-Be aware though that the mountpoint label in various metrics will now have
-`/host` as prefix.
+If you find a bug in Percona Node Exporter or one of the related projects, you should submit a report to that project's [JIRA](https://jira.percona.com) issue tracker.
 
-[travis]: https://travis-ci.org/prometheus/node_exporter
-[hub]: https://hub.docker.com/r/prom/node-exporter/
-[circleci]: https://circleci.com/gh/prometheus/node_exporter
-[quay]: https://quay.io/repository/prometheus/node-exporter
-[goreportcard]: https://goreportcard.com/report/github.com/prometheus/node_exporter
+Your first step should be [to search](https://jira.percona.com/issues/?jql=project=PMM%20AND%20component=Node_Exporter) the existing set of open tickets for a similar report. If you find that someone else has already reported your problem, then you can upvote that report to increase its visibility.
+
+If there is no existing report, submit a report following these steps:
+
+1. [Sign in to Percona JIRA.](https://jira.percona.com/login.jsp) You will need to create an account if you do not have one.
+2. [Go to the Create Issue screen and select the relevant project.](https://jira.percona.com/secure/CreateIssueDetails!init.jspa?pid=11600&issuetype=1&priority=3&components=11710)
+3. Fill in the fields of Summary, Description, Steps To Reproduce, and Affects Version to the best you can. If the bug corresponds to a crash, attach the stack trace from the logs.
+
+An excellent resource is [Elika Etemad's article on filing good bug reports.](http://fantasai.inkedblade.net/style/talks/filing-good-bugs/).
+
+As a general rule of thumb, please try to create bug reports that are:
+
+- *Reproducible.* Include steps to reproduce the problem.
+- *Specific.* Include as much detail as possible: which version, what environment, etc.
+- *Unique.* Do not duplicate existing tickets.
+- *Scoped to a Single Bug.* One bug per report.
