@@ -81,6 +81,12 @@
 			"revisionTime": "2017-01-07T15:17:58Z"
 		},
 		{
+			"checksumSHA1": "4UV5gOmXd2BNJ+eq5qbghowN5JE=",
+			"path": "github.com/percona/exporter_shared",
+			"revision": "1168a45c9ae15f2ed080440fb4f8dd47307c592a",
+			"revisionTime": "2017-07-05T07:54:24Z"
+		},
+		{
 			"checksumSHA1": "QIkEQIvgzjeOXM92+lZlbeXCaRU=",
 			"path": "github.com/prometheus/client_golang/prometheus",
 			"revision": "aace68cde27da90f76be50fcb9937d67fd6a1968",
@@ -175,6 +181,12 @@
 			"path": "golang.org/x/sys/windows/svc/eventlog",
 			"revision": "21f2569f6feb83b68a25c98c1b20eca5d4e1e6ae",
 			"revisionTime": "2017-02-28T00:49:33Z"
+		},
+		{
+			"checksumSHA1": "fALlQNY1fM99NesfLJ50KguWsio=",
+			"path": "gopkg.in/yaml.v2",
+			"revision": "cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b",
+			"revisionTime": "2017-04-07T17:21:22Z"
 		}
 	],
 	"rootPath": "github.com/prometheus/node_exporter"
