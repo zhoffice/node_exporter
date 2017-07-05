@@ -29,6 +29,8 @@ import (
 	"github.com/prometheus/common/log"
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/node_exporter/collector"
+
+	"github.com/percona/exporter_shared"
 )
 
 const (
@@ -165,6 +167,10 @@ func main() {
 	if err := prometheus.Register(NodeCollector{collectors: collectors}); err != nil {
 		log.Fatalf("Couldn't register collector: %s", err)
 	}
+
+	// Use our shared code to run server and exit on error. Upstream's code below will not be executed.
+	exporter_shared.RunServer("Node", *listenAddress, *metricsPath, promhttp.ContinueOnError)
+
 	handler := promhttp.HandlerFor(prometheus.DefaultGatherer,
 		promhttp.HandlerOpts{
 			ErrorLog:      log.NewErrorLogger(),
