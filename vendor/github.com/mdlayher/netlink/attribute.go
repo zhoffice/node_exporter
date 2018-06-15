@@ -12,7 +12,7 @@ var (
 )
 
 // An Attribute is a netlink attribute.  Attributes are packed and unpacked
-// to and from the Data field of Message for some netlink protocol families.
+// to and from the Data field of Message for some netlink families.
 type Attribute struct {
 	// Length of an Attribute, including this field and Type.
 	Length uint16
@@ -34,7 +34,8 @@ func (a Attribute) MarshalBinary() ([]byte, error) {
 
 	nlenc.PutUint16(b[0:2], a.Length)
 	nlenc.PutUint16(b[2:4], a.Type)
-	copy(b[4:], a.Data)
+
+	copy(b[nlaHeaderLen:], a.Data)
 
 	return b, nil
 }
@@ -57,12 +58,12 @@ func (a *Attribute) UnmarshalBinary(b []byte) error {
 	case a.Length == 0:
 		a.Data = make([]byte, 0)
 	// Not enough length for any data
-	case a.Length < 4:
+	case int(a.Length) < nlaHeaderLen:
 		return errInvalidAttribute
 	// Data present
-	case a.Length >= 4:
-		a.Data = make([]byte, len(b[4:a.Length]))
-		copy(a.Data, b[4:a.Length])
+	case int(a.Length) >= nlaHeaderLen:
+		a.Data = make([]byte, len(b[nlaHeaderLen:a.Length]))
+		copy(a.Data, b[nlaHeaderLen:a.Length])
 	}
 
 	return nil

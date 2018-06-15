@@ -5,21 +5,19 @@ package wifi
 import (
 	"bytes"
 	"errors"
-	"math"
 	"net"
 	"os"
 	"time"
 	"unicode/utf8"
 
+	"github.com/mdlayher/genetlink"
 	"github.com/mdlayher/netlink"
-	"github.com/mdlayher/netlink/genetlink"
 	"github.com/mdlayher/netlink/nlenc"
 	"github.com/mdlayher/wifi/internal/nl80211"
 )
 
 // Errors which may occur when interacting with generic netlink.
 var (
-	errMultipleMessages     = errors.New("expected only one generic netlink message")
 	errInvalidCommand       = errors.New("invalid generic netlink response command")
 	errInvalidFamilyVersion = errors.New("invalid generic netlink response family version")
 )
@@ -30,17 +28,9 @@ var _ osClient = &client{}
 // netlink, generic netlink, and nl80211 to provide access to WiFi device
 // actions and statistics.
 type client struct {
-	c             genl
+	c             *genetlink.Conn
 	familyID      uint16
 	familyVersion uint8
-}
-
-// genl is an interface over generic netlink, so netlink interactions can
-// be stubbed in tests.
-type genl interface {
-	Close() error
-	GetFamily(name string) (genetlink.Family, error)
-	Execute(m genetlink.Message, family uint16, flags netlink.HeaderFlags) ([]genetlink.Message, error)
 }
 
 // newClient dials a generic netlink connection and verifies that nl80211
@@ -51,12 +41,10 @@ func newClient() (*client, error) {
 		return nil, err
 	}
 
-	g := &sysGENL{Conn: c}
-	return initClient(g)
+	return initClient(c)
 }
 
-// initClient is the internal constructor for a client, used in tests.
-func initClient(c genl) (*client, error) {
+func initClient(c *genetlink.Conn) (*client, error) {
 	family, err := c.GetFamily(nl80211.GenlName)
 	if err != nil {
 		// Ensure the genl socket is closed on error to avoid leaking file
@@ -131,9 +119,9 @@ func (c *client) BSS(ifi *Interface) (*BSS, error) {
 	return parseBSS(msgs)
 }
 
-// StationInfo requests that nl80211 return station info for the specified
+// StationInfo requests that nl80211 return all station info for the specified
 // Interface.
-func (c *client) StationInfo(ifi *Interface) (*StationInfo, error) {
+func (c *client) StationInfo(ifi *Interface) ([]*StationInfo, error) {
 	b, err := netlink.MarshalAttributes(ifi.idAttrs())
 	if err != nil {
 		return nil, err
@@ -158,21 +146,24 @@ func (c *client) StationInfo(ifi *Interface) (*StationInfo, error) {
 		return nil, err
 	}
 
-	switch len(msgs) {
-	case 0:
+	if len(msgs) == 0 {
 		return nil, os.ErrNotExist
-	case 1:
-		break
-	default:
-		return nil, errMultipleMessages
 	}
 
-	if err := c.checkMessages(msgs, nl80211.CmdNewStation); err != nil {
-		return nil, err
+	stations := make([]*StationInfo, len(msgs))
+	for i := range msgs {
+		if err := c.checkMessages(msgs, nl80211.CmdNewStation); err != nil {
+			return nil, err
+		}
+
+		if stations[i], err = parseStationInfo(msgs[i].Data); err != nil {
+			return nil, err
+		}
 	}
 
-	return parseStationInfo(msgs[0].Data)
+	return stations, nil
 }
+
 
 // checkMessages verifies that response messages from generic netlink contain
 // the command and family version we expect.
@@ -334,25 +325,32 @@ func parseStationInfo(b []byte) (*StationInfo, error) {
 		return nil, err
 	}
 
+	var info StationInfo
 	for _, a := range attrs {
-		// The other attributes that are returned here appear to indicate the
-		// interface index and MAC address, which is information we already
-		// possess.  No need to parse them for now.
-		if a.Type != nl80211.AttrStaInfo {
+
+		switch a.Type {
+		case nl80211.AttrMac:
+			info.HardwareAddr = net.HardwareAddr(a.Data)
+
+		case nl80211.AttrStaInfo:
+			nattrs, err := netlink.UnmarshalAttributes(a.Data)
+			if err != nil {
+				return nil, err
+			}
+
+			if err := (&info).parseAttributes(nattrs); err != nil {
+				return nil, err
+			}
+
+			// nl80211.AttrStaInfo is last attibute we are interested in
+			return &info, nil
+
+		default:
+			// The other attributes that are returned here appear
+			// nl80211.AttrIfindex, nl80211.AttrGeneration
+			// No need to parse them for now.
 			continue
 		}
-
-		nattrs, err := netlink.UnmarshalAttributes(a.Data)
-		if err != nil {
-			return nil, err
-		}
-
-		var info StationInfo
-		if err := (&info).parseAttributes(nattrs); err != nil {
-			return nil, err
-		}
-
-		return &info, nil
 	}
 
 	// No station info found
@@ -375,9 +373,9 @@ func (info *StationInfo) parseAttributes(attrs []netlink.Attribute) error {
 		case nl80211.StaInfoTxBytes64:
 			info.TransmittedBytes = int(nlenc.Uint64(a.Data))
 		case nl80211.StaInfoSignal:
-			// Converted into the typical negative strength format
 			//  * @NL80211_STA_INFO_SIGNAL: signal strength of last received PPDU (u8, dBm)
-			info.Signal = int(a.Data[0]) - math.MaxUint8
+			// Should just be cast to int8, see code here: https://git.kernel.org/pub/scm/linux/kernel/git/jberg/iw.git/tree/station.c#n378
+			info.Signal = int(int8(a.Data[0]))
 		case nl80211.StaInfoRxPackets:
 			info.ReceivedPackets = int(nlenc.Uint32(a.Data))
 		case nl80211.StaInfoTxPackets:
@@ -478,16 +476,4 @@ func decodeSSID(b []byte) string {
 	}
 
 	return buf.String()
-}
-
-var _ genl = &sysGENL{}
-
-// sysGENL is the system implementation of genl, using generic netlink.
-type sysGENL struct {
-	*genetlink.Conn
-}
-
-// GetFamily is a small adapter to make *genetlink.Conn implement genl.
-func (g *sysGENL) GetFamily(name string) (genetlink.Family, error) {
-	return g.Conn.Family.Get(name)
 }

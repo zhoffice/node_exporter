@@ -35,7 +35,7 @@ else
     test-e2e := skip-test-e2e
 endif
 
-all: format vet staticcheck build test $(test-e2e)
+all: verify-vendor format vet staticcheck build test $(test-e2e)
 
 style:
 	@echo ">> checking code style"
@@ -49,8 +49,16 @@ test-e2e: build
 	@echo ">> running end-to-end tests"
 	./end-to-end-test.sh
 
+
 skip-test-e2e:
 	@echo ">> SKIP running end-to-end tests on $(OS_detected)"
+
+verify-vendor:
+	@echo ">> verify that vendor/ is in sync with code and Gopkg.*"
+	curl https://github.com/golang/dep/releases/download/v0.4.1/dep-linux-amd64 -L -o ~/dep && chmod +x ~/dep
+	rm -fr vendor/
+	~/dep ensure -v -vendor-only
+	git diff --exit-code
 
 format:
 	@echo ">> formatting code"
