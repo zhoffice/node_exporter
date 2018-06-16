@@ -1,3 +1,6 @@
+# This is a fork of github.com/prometheus/node_exporter/collector.
+ignored = ["github.com/prometheus/node_exporter/collector"]
+
 [prune]
   go-tests = true
   non-go = true

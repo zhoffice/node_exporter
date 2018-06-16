@@ -35,12 +35,6 @@
   version = "v17"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/ema/qdisc"
-  packages = ["."]
-  revision = "b307c22d3ce761d351b6e6270b50195b44ee9248"
-
-[[projects]]
   name = "github.com/godbus/dbus"
   packages = ["."]
   revision = "a389bdde4dd695d414e47b755e95e72b7826432c"
@@ -57,12 +51,6 @@
   name = "github.com/kolo/xmlrpc"
   packages = ["."]
   revision = "0826b98aaa29c0766956cb40d45cf7482a597671"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/lufia/iostat"
-  packages = ["."]
-  revision = "9f7362b77ad333b26c01c99de52a11bdb650ded2"
 
 [[projects]]
   name = "github.com/matttproud/golang_protobuf_extensions"
@@ -129,10 +117,7 @@
 
 [[projects]]
   name = "github.com/prometheus/node_exporter"
-  packages = [
-    "collector",
-    "collector/ganglia"
-  ]
+  packages = ["collector/ganglia"]
   revision = "98bc64930d34878b84a0f87dfe6e1a6da61e532d"
   version = "v0.15.2"
 
@@ -141,10 +126,8 @@
   name = "github.com/prometheus/procfs"
   packages = [
     ".",
-    "bcache",
     "internal/util",
     "nfs",
-    "sysfs",
     "xfs"
   ]
   revision = "7d6f385de8bea29190f15ba9931442a0eaef9af7"
@@ -187,7 +170,7 @@
     "windows/registry",
     "windows/svc/eventlog"
   ]
-  revision = "8014b7b116a67fea23fbb82cd834c9ad656ea44b"
+  revision = "6c888cc515d3ed83fc103cf1d84468aad274b0a7"
 
 [[projects]]
   name = "gopkg.in/alecthomas/kingpin.v2"
@@ -204,6 +187,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ae3956defeb9fb06d06855bd6df8efdd7482c5d574dcc7e67dd23f61079016fc"
+  inputs-digest = "a16f7d259c6188feecd8d91be342a7fc3c3c9581af4f749e1e8133fa5bb71f23"
   solver-name = "gps-cdcl"
   solver-version = 1
