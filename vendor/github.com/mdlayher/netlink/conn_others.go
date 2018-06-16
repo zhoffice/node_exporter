@@ -5,8 +5,6 @@ package netlink
 import (
 	"fmt"
 	"runtime"
-
-	"golang.org/x/net/bpf"
 )
 
 var (
@@ -16,14 +14,14 @@ var (
 		runtime.GOOS, runtime.GOARCH)
 )
 
-var _ Socket = &conn{}
+var _ osConn = &conn{}
 
 // A conn is the no-op implementation of a netlink sockets connection.
 type conn struct{}
 
 // dial is the entry point for Dial.  dial always returns an error.
-func dial(family int, config *Config) (*conn, uint32, error) {
-	return nil, 0, errUnimplemented
+func dial(family int, config *Config) (*conn, error) {
+	return nil, errUnimplemented
 }
 
 // Send always returns an error.
@@ -48,11 +46,6 @@ func (c *conn) JoinGroup(group uint32) error {
 
 // LeaveGroup always returns an error.
 func (c *conn) LeaveGroup(group uint32) error {
-	return errUnimplemented
-}
-
-// SetBPF always returns an error.
-func (c *conn) SetBPF(filter []bpf.RawInstruction) error {
 	return errUnimplemented
 }
 

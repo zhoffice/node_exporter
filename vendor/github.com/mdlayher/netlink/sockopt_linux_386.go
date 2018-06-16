@@ -4,7 +4,7 @@
 
 // +build linux,386
 
-package netlink
+package raw
 
 import (
 	"syscall"

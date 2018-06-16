@@ -59,28 +59,21 @@
   version = "v1.0.1"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/mdlayher/genetlink"
-  packages = ["."]
-  revision = "0b18675c0b77924cf6bbf279b68cf9064c4cd265"
-
-[[projects]]
-  branch = "master"
   name = "github.com/mdlayher/netlink"
   packages = [
     ".",
+    "genetlink",
     "nlenc"
   ]
-  revision = "25817dc2553bde648b4bd825e625e87d92658bb7"
+  revision = "1291b75abe0cc0cb335f110466bf1f02590c916d"
 
 [[projects]]
-  branch = "master"
   name = "github.com/mdlayher/wifi"
   packages = [
     ".",
     "internal/nl80211"
   ]
-  revision = "9a2549315201616119128afe421d1601ef3506f9"
+  revision = "567082929344b0af8eb8a2ad6fe4725c0b3c8702"
 
 [[projects]]
   branch = "master"
@@ -114,12 +107,6 @@
     "version"
   ]
   revision = "7600349dcfe1abd18d72d3a1770870d9800a7801"
-
-[[projects]]
-  name = "github.com/prometheus/node_exporter"
-  packages = ["collector/ganglia"]
-  revision = "98bc64930d34878b84a0f87dfe6e1a6da61e532d"
-  version = "v0.15.2"
 
 [[projects]]
   branch = "master"
@@ -187,6 +174,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a16f7d259c6188feecd8d91be342a7fc3c3c9581af4f749e1e8133fa5bb71f23"
+  inputs-digest = "a9273347de0ac6bc15510d52d3a82f438a430d090b5b8da50be5aed04d57ba82"
   solver-name = "gps-cdcl"
   solver-version = 1

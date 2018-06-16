@@ -1,7 +1,16 @@
 # This is a fork of github.com/prometheus/node_exporter/collector.
-ignored = ["github.com/prometheus/node_exporter/collector"]
+ignored = ["github.com/prometheus/node_exporter*"]
 
 [prune]
   go-tests = true
   non-go = true
   unused-packages = true
+
+[[constraint]]
+  name = "github.com/mdlayher/wifi"
+  revision = "567082929344b0af8eb8a2ad6fe4725c0b3c8702"
+
+[[override]]
+  name = "github.com/mdlayher/netlink"
+  revision = "1291b75abe0cc0cb335f110466bf1f02590c916d"
+

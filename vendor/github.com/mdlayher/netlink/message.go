@@ -57,25 +57,12 @@ const (
 
 	// HeaderFlagsAtomic requests that netlink send an atomic snapshot of
 	// its entries.  Requires CAP_NET_ADMIN or an effective UID of 0.
+	// May be obsolete.
 	HeaderFlagsAtomic HeaderFlags = 0x400
 
 	// HeaderFlagsDump requests that netlink return a complete list of
 	// all entries.
 	HeaderFlagsDump HeaderFlags = HeaderFlagsRoot | HeaderFlagsMatch
-
-	// Flags used to create objects.
-
-	// HeaderFlagsReplace indicates request replaces an existing matching object.
-	HeaderFlagsReplace HeaderFlags = 0x100
-
-	// HeaderFlagsExcl  indicates request does not replace the object if it already exists.
-	HeaderFlagsExcl HeaderFlags = 0x200
-
-	// HeaderFlagsCreate indicates request creates an object if it doesn't already exist.
-	HeaderFlagsCreate HeaderFlags = 0x400
-
-	// HeaderFlagsAppend indicates request adds to the end of the object list.
-	HeaderFlagsAppend HeaderFlags = 0x800
 )
 
 // String returns the string representation of a HeaderFlags.
@@ -87,12 +74,14 @@ func (f HeaderFlags) String() string {
 		"echo",
 		"dumpinterrupted",
 		"dumpfiltered",
+		"1<<6",
+		"1<<7",
+		"root",
+		"match",
+		"atomic",
 	}
 
 	var s string
-
-	left := uint(f)
-
 	for i, name := range names {
 		if f&(1<<uint(i)) != 0 {
 			if s != "" {
@@ -100,20 +89,11 @@ func (f HeaderFlags) String() string {
 			}
 
 			s += name
-
-			left ^= (1 << uint(i))
 		}
 	}
 
-	if s == "" && left == 0 {
+	if s == "" {
 		s = "0"
-	}
-
-	if left > 0 {
-		if s != "" {
-			s += "|"
-		}
-		s += fmt.Sprintf("%#x", left)
 	}
 
 	return s
@@ -179,8 +159,8 @@ type Header struct {
 // A Message is a netlink message.  It contains a Header and an arbitrary
 // byte payload, which may be decoded using information from the Header.
 //
-// Data is encoded in the native endianness of the host system.  For easier
-// of encoding and decoding of integers, use package nlenc.
+// Data is encoded in the native endianness of the host system.  Use this
+// package's Uint* and PutUint* functions to encode and decode integers.
 type Message struct {
 	Header Header
 	Data   []byte
@@ -233,17 +213,8 @@ func (m *Message) UnmarshalBinary(b []byte) error {
 func checkMessage(m Message) error {
 	const success = 0
 
-	// Both "done" and "error" can contain error codes.
-	isDone := m.Header.Type == HeaderTypeDone
-	isError := m.Header.Type == HeaderTypeError
-
-	switch {
-	// "done" with no data means success.
-	case isDone && len(m.Data) == 0:
-		return nil
-	case isError, isDone:
-		break
-	default:
+	// HeaderTypeError may indicate an error code, or success
+	if m.Header.Type != HeaderTypeError {
 		return nil
 	}
 
