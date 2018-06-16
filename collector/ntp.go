@@ -63,7 +63,10 @@ func NewNtpCollector() (Collector, error) {
 }
 
 func (c *ntpCollector) Update(ch chan<- prometheus.Metric) error {
-	resp, err := ntp.Query(*ntpServer, *ntpProtocolVersion)
+	opt := ntp.QueryOptions{
+		Version: *ntpProtocolVersion,
+	}
+	resp, err := ntp.QueryWithOptions(*ntpServer, opt)
 	if err != nil {
 		return fmt.Errorf("couldn't get NTP drift: %s", err)
 	}
