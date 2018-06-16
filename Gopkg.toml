@@ -14,3 +14,8 @@ ignored = ["github.com/prometheus/node_exporter*"]
   name = "github.com/mdlayher/netlink"
   revision = "1291b75abe0cc0cb335f110466bf1f02590c916d"
 
+[[override]]
+  name = "github.com/prometheus/common"
+  # Version before introducing kingpin.
+  # https://github.com/prometheus/common/pull/96
+  revision = "185c63bfc5a8c7a703687edb52940c895c818cb5"

@@ -2,21 +2,6 @@
 
 
 [[projects]]
-  branch = "master"
-  name = "github.com/alecthomas/template"
-  packages = [
-    ".",
-    "parse"
-  ]
-  revision = "a0175ee3bccc567396460bf5acd36800cb10c49c"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/alecthomas/units"
-  packages = ["."]
-  revision = "2efee857e7cfd4f3d0138cc3cbb1b4966962b93a"
-
-[[projects]]
   name = "github.com/beevik/ntp"
   packages = ["."]
   revision = "62c80a04de2086884d8296004b6d74ee1846c582"
@@ -97,7 +82,6 @@
   revision = "99fa1f4be8e564e8a6b613da7fa6f46c9edafc6c"
 
 [[projects]]
-  branch = "master"
   name = "github.com/prometheus/common"
   packages = [
     "expfmt",
@@ -106,7 +90,7 @@
     "model",
     "version"
   ]
-  revision = "7600349dcfe1abd18d72d3a1770870d9800a7801"
+  revision = "185c63bfc5a8c7a703687edb52940c895c818cb5"
 
 [[projects]]
   branch = "master"
@@ -160,12 +144,6 @@
   revision = "6c888cc515d3ed83fc103cf1d84468aad274b0a7"
 
 [[projects]]
-  name = "gopkg.in/alecthomas/kingpin.v2"
-  packages = ["."]
-  revision = "947dcec5ba9c011838740e680966fd7087a71d0d"
-  version = "v2.2.6"
-
-[[projects]]
   name = "gopkg.in/yaml.v2"
   packages = ["."]
   revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
@@ -174,6 +152,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a9273347de0ac6bc15510d52d3a82f438a430d090b5b8da50be5aed04d57ba82"
+  inputs-digest = "7172500e795d9f75d043bca6f4bd8b3093d88fd96639d4e94e42cf9a90da3909"
   solver-name = "gps-cdcl"
   solver-version = 1
