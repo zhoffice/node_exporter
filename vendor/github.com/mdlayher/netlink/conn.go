@@ -2,10 +2,9 @@ package netlink
 
 import (
 	"errors"
-	"math/rand"
+	"math"
+	"os"
 	"sync/atomic"
-
-	"golang.org/x/net/bpf"
 )
 
 // Error messages which can be returned by Validate.
@@ -25,9 +24,6 @@ type Conn struct {
 	// seq is an atomically incremented integer used to provide sequence
 	// numbers when Conn.Send is called.
 	seq *uint32
-
-	// pid is the PID assigned by netlink.
-	pid uint32
 }
 
 // An osConn is an operating-system specific implementation of netlink
@@ -38,7 +34,6 @@ type osConn interface {
 	Receive() ([]Message, error)
 	JoinGroup(group uint32) error
 	LeaveGroup(group uint32) error
-	SetBPF(filter []bpf.RawInstruction) error
 }
 
 // Dial dials a connection to netlink, using the specified protocol number.
@@ -46,22 +41,19 @@ type osConn interface {
 // configuration will be used.
 func Dial(proto int, config *Config) (*Conn, error) {
 	// Use OS-specific dial() to create osConn
-	c, pid, err := dial(proto, config)
+	c, err := dial(proto, config)
 	if err != nil {
 		return nil, err
 	}
 
-	return newConn(c, pid), nil
+	return newConn(c), nil
 }
 
 // newConn is the internal constructor for Conn, used in tests.
-func newConn(c osConn, pid uint32) *Conn {
-	seq := rand.Uint32()
-
+func newConn(c osConn) *Conn {
 	return &Conn{
 		c:   c,
-		seq: &seq,
-		pid: pid,
+		seq: new(uint32),
 	}
 }
 
@@ -105,13 +97,13 @@ func (c *Conn) Execute(m Message) ([]Message, error) {
 // If m.Header.Sequence is 0, it will be automatically populated using the
 // next sequence number for this connection.
 //
-// If m.Header.PID is 0, it will be automatically populated using a PID
-// assigned by netlink.
+// If m.Header.PID is 0, it will be automatically populated using the
+// process ID (PID) of this process.
 func (c *Conn) Send(m Message) (Message, error) {
 	ml := nlmsgLength(len(m.Data))
 
-	// TODO(mdlayher): fine-tune this limit.
-	if ml > (1024 * 32) {
+	// TODO(mdlayher): fine-tune this limit.  ~4GiB is a huge message.
+	if ml > math.MaxUint32 {
 		return Message{}, errors.New("netlink message data too large")
 	}
 
@@ -124,7 +116,7 @@ func (c *Conn) Send(m Message) (Message, error) {
 	}
 
 	if m.Header.PID == 0 {
-		m.Header.PID = c.pid
+		m.Header.PID = uint32(os.Getpid())
 	}
 
 	if err := c.c.Send(m); err != nil {
@@ -136,9 +128,8 @@ func (c *Conn) Send(m Message) (Message, error) {
 
 // Receive receives one or more messages from netlink.  Multi-part messages are
 // handled transparently and returned as a single slice of Messages, with the
-// final empty "multi-part done" message removed.
-//
-// If any of the messages indicate a netlink error, that error will be returned.
+// final empty "multi-part done" message removed.  If any of the messages
+// indicate a netlink error, that error will be returned.
 func (c *Conn) Receive() ([]Message, error) {
 	msgs, err := c.receive()
 	if err != nil {
@@ -200,11 +191,6 @@ func (c *Conn) LeaveGroup(group uint32) error {
 	return c.c.LeaveGroup(group)
 }
 
-// SetBPF attaches an assembled BPF program to a Conn.
-func (c *Conn) SetBPF(filter []bpf.RawInstruction) error {
-	return c.c.SetBPF(filter)
-}
-
 // nextSequence atomically increments Conn's sequence number and returns
 // the incremented value.
 func (c *Conn) nextSequence() uint32 {
@@ -215,19 +201,10 @@ func (c *Conn) nextSequence() uint32 {
 // ensuring that they contain matching sequence numbers and PIDs.
 func Validate(request Message, replies []Message) error {
 	for _, m := range replies {
-		// Check for mismatched sequence, unless:
-		//   - request had no sequence, meaning we are probably validating
-		//     a multicast reply
-		if m.Header.Sequence != request.Header.Sequence && request.Header.Sequence != 0 {
+		if m.Header.Sequence != request.Header.Sequence {
 			return errMismatchedSequence
 		}
-
-		// Check for mismatched PID, unless:
-		//   - request had no PID, meaning we are either:
-		//     - validating a multicast reply
-		//     - netlink has not yet assigned us a PID
-		//   - response had no PID, meaning it's from the kernel as a multicast reply
-		if m.Header.PID != request.Header.PID && request.Header.PID != 0 && m.Header.PID != 0 {
+		if m.Header.PID != request.Header.PID {
 			return errMismatchedPID
 		}
 	}

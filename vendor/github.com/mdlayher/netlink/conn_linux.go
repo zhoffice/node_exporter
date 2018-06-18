@@ -7,13 +7,10 @@ import (
 	"os"
 	"syscall"
 	"unsafe"
-
-	"golang.org/x/net/bpf"
-	"golang.org/x/sys/unix"
 )
 
 var (
-	errInvalidSockaddr = errors.New("expected unix.SockaddrNetlink but received different unix.Sockaddr")
+	errInvalidSockaddr = errors.New("expected syscall.SockaddrNetlink but received different syscall.Sockaddr")
 	errInvalidFamily   = errors.New("received invalid netlink family")
 )
 
@@ -22,29 +19,28 @@ var _ osConn = &conn{}
 // A conn is the Linux implementation of a netlink sockets connection.
 type conn struct {
 	s  socket
-	sa *unix.SockaddrNetlink
+	sa *syscall.SockaddrNetlink
 }
 
 // A socket is an interface over socket system calls.
 type socket interface {
-	Bind(sa unix.Sockaddr) error
+	Bind(sa syscall.Sockaddr) error
 	Close() error
-	Getsockname() (unix.Sockaddr, error)
-	Recvmsg(p, oob []byte, flags int) (n int, oobn int, recvflags int, from unix.Sockaddr, err error)
-	Sendmsg(p, oob []byte, to unix.Sockaddr, flags int) error
+	Recvfrom(p []byte, flags int) (int, syscall.Sockaddr, error)
+	Sendto(p []byte, flags int, to syscall.Sockaddr) error
 	SetSockopt(level, name int, v unsafe.Pointer, l uint32) error
 }
 
 // dial is the entry point for Dial.  dial opens a netlink socket using
-// system calls, and returns its PID.
-func dial(family int, config *Config) (*conn, uint32, error) {
-	fd, err := unix.Socket(
-		unix.AF_NETLINK,
-		unix.SOCK_RAW,
+// system calls.
+func dial(family int, config *Config) (*conn, error) {
+	fd, err := syscall.Socket(
+		syscall.AF_NETLINK,
+		syscall.SOCK_RAW,
 		family,
 	)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	return bind(&sysSocket{fd: fd}, config)
@@ -52,36 +48,24 @@ func dial(family int, config *Config) (*conn, uint32, error) {
 
 // bind binds a connection to netlink using the input socket, which may be
 // a system call implementation or a mocked one for tests.
-func bind(s socket, config *Config) (*conn, uint32, error) {
+func bind(s socket, config *Config) (*conn, error) {
 	if config == nil {
 		config = &Config{}
 	}
 
-	addr := &unix.SockaddrNetlink{
-		Family: unix.AF_NETLINK,
+	addr := &syscall.SockaddrNetlink{
+		Family: syscall.AF_NETLINK,
 		Groups: config.Groups,
 	}
 
-	// Socket must be closed in the event of any system call errors, to avoid
-	// leaking file descriptors.
-
 	if err := s.Bind(addr); err != nil {
-		_ = s.Close()
-		return nil, 0, err
+		return nil, err
 	}
-
-	sa, err := s.Getsockname()
-	if err != nil {
-		_ = s.Close()
-		return nil, 0, err
-	}
-
-	pid := sa.(*unix.SockaddrNetlink).Pid
 
 	return &conn{
 		s:  s,
 		sa: addr,
-	}, pid, nil
+	}, nil
 }
 
 // Send sends a single Message to netlink.
@@ -91,11 +75,9 @@ func (c *conn) Send(m Message) error {
 		return err
 	}
 
-	addr := &unix.SockaddrNetlink{
-		Family: unix.AF_NETLINK,
-	}
-
-	return c.s.Sendmsg(b, nil, addr, 0)
+	return c.s.Sendto(b, 0, &syscall.SockaddrNetlink{
+		Family: syscall.AF_NETLINK,
+	})
 }
 
 // Receive receives one or more Messages from netlink.
@@ -103,7 +85,7 @@ func (c *conn) Receive() ([]Message, error) {
 	b := make([]byte, os.Getpagesize())
 	for {
 		// Peek at the buffer to see how many bytes are available
-		n, _, _, _, err := c.s.Recvmsg(b, nil, unix.MSG_PEEK)
+		n, _, err := c.s.Recvfrom(b, syscall.MSG_PEEK)
 		if err != nil {
 			return nil, err
 		}
@@ -118,16 +100,16 @@ func (c *conn) Receive() ([]Message, error) {
 	}
 
 	// Read out all available messages
-	n, _, _, from, err := c.s.Recvmsg(b, nil, 0)
+	n, from, err := c.s.Recvfrom(b, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	addr, ok := from.(*unix.SockaddrNetlink)
+	addr, ok := from.(*syscall.SockaddrNetlink)
 	if !ok {
 		return nil, errInvalidSockaddr
 	}
-	if addr.Family != unix.AF_NETLINK {
+	if addr.Family != syscall.AF_NETLINK {
 		return nil, errInvalidFamily
 	}
 
@@ -154,11 +136,16 @@ func (c *conn) Close() error {
 	return c.s.Close()
 }
 
+const (
+	// #define SOL_NETLINK     270
+	solNetlink = 270
+)
+
 // JoinGroup joins a multicast group by ID.
 func (c *conn) JoinGroup(group uint32) error {
 	return c.s.SetSockopt(
-		unix.SOL_NETLINK,
-		unix.NETLINK_ADD_MEMBERSHIP,
+		solNetlink,
+		syscall.NETLINK_ADD_MEMBERSHIP,
 		unsafe.Pointer(&group),
 		uint32(unsafe.Sizeof(group)),
 	)
@@ -167,25 +154,10 @@ func (c *conn) JoinGroup(group uint32) error {
 // LeaveGroup leaves a multicast group by ID.
 func (c *conn) LeaveGroup(group uint32) error {
 	return c.s.SetSockopt(
-		unix.SOL_NETLINK,
-		unix.NETLINK_DROP_MEMBERSHIP,
+		solNetlink,
+		syscall.NETLINK_DROP_MEMBERSHIP,
 		unsafe.Pointer(&group),
 		uint32(unsafe.Sizeof(group)),
-	)
-}
-
-// SetBPF attaches an assembled BPF program to a conn.
-func (c *conn) SetBPF(filter []bpf.RawInstruction) error {
-	prog := unix.SockFprog{
-		Len:    uint16(len(filter)),
-		Filter: (*unix.SockFilter)(unsafe.Pointer(&filter[0])),
-	}
-
-	return c.s.SetSockopt(
-		unix.SOL_SOCKET,
-		unix.SO_ATTACH_FILTER,
-		unsafe.Pointer(&prog),
-		uint32(unsafe.Sizeof(prog)),
 	)
 }
 
@@ -209,14 +181,13 @@ type sysSocket struct {
 	fd int
 }
 
-func (s *sysSocket) Bind(sa unix.Sockaddr) error         { return unix.Bind(s.fd, sa) }
-func (s *sysSocket) Close() error                        { return unix.Close(s.fd) }
-func (s *sysSocket) Getsockname() (unix.Sockaddr, error) { return unix.Getsockname(s.fd) }
-func (s *sysSocket) Recvmsg(p, oob []byte, flags int) (int, int, int, unix.Sockaddr, error) {
-	return unix.Recvmsg(s.fd, p, oob, flags)
+func (s *sysSocket) Bind(sa syscall.Sockaddr) error { return syscall.Bind(s.fd, sa) }
+func (s *sysSocket) Close() error                   { return syscall.Close(s.fd) }
+func (s *sysSocket) Recvfrom(p []byte, flags int) (int, syscall.Sockaddr, error) {
+	return syscall.Recvfrom(s.fd, p, flags)
 }
-func (s *sysSocket) Sendmsg(p, oob []byte, to unix.Sockaddr, flags int) error {
-	return unix.Sendmsg(s.fd, p, oob, to, flags)
+func (s *sysSocket) Sendto(p []byte, flags int, to syscall.Sockaddr) error {
+	return syscall.Sendto(s.fd, p, flags, to)
 }
 func (s *sysSocket) SetSockopt(level, name int, v unsafe.Pointer, l uint32) error {
 	return setsockopt(s.fd, level, name, v, l)
